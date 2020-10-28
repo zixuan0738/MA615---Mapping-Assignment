@@ -1,0 +1,127 @@
+---
+title: "Untitled"
+author: "mary liu"
+date: "10/27/2020"
+output:
+  html_document: default
+  word_document: default
+---
+```{r}
+
+#install.packages('map')
+#install.packages('tmaptools')
+library(usmap)
+library(maps)
+library(tmap)
+library(tmaptools)
+library(dplyr)
+library(hurricaneexposure)
+library(hurricaneexposuredata)
+library(tidyverse)
+library(tidyr)
+library(drat)
+library(ggplot2)
+library(sp)
+library(sf)
+library(rgdal)
+
+```
+
+
+We are trying 2 different methods to form two maps like this.
+
+```{r}
+map_counties(storm = "Floyd-1999", metric = "rainfall") +
+    ggtitle("Floyd-1999") +
+    theme(plot.title = element_text(hjust = 0.5))
+
+```
+```{r}
+
+map_rain_exposure(storm ="Allison-2001", 
+                  rain_limit = 175, 
+                  dist_limit = 500, 
+                  days_included =-5:3) +
+    ggtitle("Allison-2001") +
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+countydata <- map_data(map = "county",
+                     region = c("texas","oklahoma","kansas","louisiana", "arkansas", 
+                       "missouri", "iowa","wisconsin", "michigan","illinois","indiana", 
+                       "ohio", "kentucky", "tennessee", "alabama", "mississippi",
+                       "florida", "georgia", "south carolina", "north carolina", "virginia",
+                       "west virginia", "maryland", "delaware", "pennsylvania", "new jersey", 
+                       "new york", "connecticut", "rhode island", "massachusetts", "vermont",
+                       "new hampshire", "maine"))
+statedata <- map_data(map = "state",
+                    region = c("texas","oklahoma","kansas","louisiana", "arkansas", 
+                       "missouri", "iowa","wisconsin", "michigan","illinois","indiana", 
+                       "ohio", "kentucky", "tennessee", "alabama", "mississippi",
+                       "florida", "georgia", "south carolina", "north carolina", "virginia",
+                       "west virginia", "maryland", "delaware", "pennsylvania", "new jersey", 
+                       "new york", "connecticut", "rhode island", "massachusetts", "vermont",
+                       "new hampshire", "maine"))
+```
+
+```{r}
+# read map data first
+data(county.fips)
+library(maps)
+ob = st_as_sf(map('county',plot=F,fill=T))
+colnames(county.fips)[2]=colnames(ob)[1]
+ob = left_join(ob,county.fips,'ID')
+```
+
+```{r}
+##Floyd-1999 Map
+#filter data for Floyd-1999 and right join two datasets together
+floyd_track <- force(hurr_tracks)%>% filter(storm_id=='Floyd-1999')
+floyd_rain=force(rain)%>% filter(storm_id=='Floyd-1999')%>% group_by(fips) %>% mutate(fips=as.numeric(fips)) %>% 
+  summarise(storm_id=storm_id[1],precip=sum(precip))
+floyd_rain=right_join(ob,floyd_rain,'fips')
+
+
+```
+
+
+```{r}
+# ggplot2 mapping
+ggplot()+ ggtitle("Floyd-1999") +
+  geom_sf(data=floyd_rain,mapping=aes(fill=precip))+
+  scale_fill_steps(low='white',high='purple',name='Rainfall (mm)')+
+  geom_path(data=floyd_track,mapping=aes(x=longitude,y=latitude))+
+  theme(plot.title=element_text(hjust=0.3))
+
+```
+
+
+
+
+
+```{r}
+##Allison-2001 Map
+#filter data for Allison-2001 and right join datasets together
+allison_track=force(hurr_tracks)%>% filter(storm_id=='Allison-2001')
+allison_rain=force(rain)%>% filter(storm_id=='Allison-2001')%>% group_by(fips)%>% mutate(fips=as.numeric(fips)) %>%
+  summarise(storm_id=storm_id[1],precip=sum(precip))
+allison_rain=right_join(ob,allison_rain,'fips')
+
+## select alison with storm_dist<500 & rainfall>175
+allison_dist=force(closest_dist)%>% filter(storm_id=='Allison-2001',storm_dist<500)
+allison_rain_limit=allison_rain%>% filter(precip>175,fips%in%allison_dist$fips)
+
+```
+
+
+```{r}
+# ggplot2 mapping
+ggplot()+  ggtitle("Allison-2001")+
+  geom_sf(data=allison_rain)+
+  geom_sf(data=allison_rain_limit,mapping=aes(fill=precip))+
+  scale_fill_steps(low='white',high='green', name='Rainfall (mm)')+
+  geom_path(data=allison_track,mapping=aes(x=longitude,y=latitude))+
+  theme(plot.title=element_text(hjust=0.3))
+```
+
