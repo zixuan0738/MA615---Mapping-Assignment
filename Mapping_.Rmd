@@ -87,31 +87,27 @@ Allison-2001 Map
 #filter data for Allison-2001 and right join datasets together
 allison_track=force(hurr_tracks)%>% filter(storm_id=='Allison-2001')
 allison_rain=force(rain)%>% filter(storm_id=='Allison-2001')%>% group_by(fips) %>%
-  mutate(fips=as.numeric(fips)) %>%
-  summarise(storm_id=storm_id[1],precip=sum(precip))
+  mutate(fips=as.numeric(fips)) %>% summarise(storm_id=storm_id[1],precip=sum(precip))
 allison_rain=right_join(ob,allison_rain,'fips')
+Allison_hurr <- hurr_tracks %>%  filter(storm_id == "Allison-2001")
 ```
 
 
 ```{r, warning=FALSE}
+
 #select Allison with storm_dist<500 & rainfall>175
-
 allison_rain$'Rainfall > 175mm' <- cut(allison_rain$precip,c(-1,175,500),c("Unexposed","Exposed"),ordered_result = T)
-
-
 ```
 
 ggplot2 mapping for Allison-2001
 
 ```{r, warning=FALSE}
-ggplot()+  ggtitle("Allison-2001")+
-  
-  geom_sf(data=allison_rain,mapping=aes(fill=`Rainfall > 175mm`))
-  geom_sf(data=allison_rain)+
-  geom_path(data=allison_track,mapping=aes(x=longitude,y=latitude))+
-  theme(plot.title=element_text(hjust=0.3))
+ggplot()+ ggtitle("Allison-2001")+
+geom_path(aes(x = Allison_hurr$longitude, y = Allison_hurr$latitude), color = "red")+
+geom_sf(data=allison_rain)+
+geom_sf(data=allison_rain,mapping=aes(fill=`Rainfall > 175mm`))+
+theme(plot.title=element_text(hjust=0.3))
 ```
-
 
 # Using tmap
 The second map for Floyd-1999 with tmap
